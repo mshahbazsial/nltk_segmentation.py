@@ -1,0 +1,106 @@
+import nltk
+import math
+import string
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+
+documents = {
+    'Animals': "Dogs and cats are the most common household pets, while birds and fish are also popular companions. In the wild, lions roar to communicate, dogs bark to alert, and cats meow to express themselves.",
+    'Food': "Pizza topped with cheese is a favorite fast food, while burgers are classic American cuisine. Pasta dishes like spaghetti are popular in Italian cooking. For dessert, ice cream and fresh apples make delicious treats.",
+    'Sports': "Football and basketball are team sports played worldwide. Tennis requires precision and skill, while swimming and running are excellent individual exercises. Players kick the ball in football and shoot for goals in basketball."
+}
+
+stop_words = set(stopwords.words('english'))
+
+def preprocess(text):
+    text = text.lower()
+    tokens = word_tokenize(text)
+    tokens = [token for token in tokens if token not in string.punctuation and token not in stop_words]
+    return tokens
+
+processed_docs = {}
+for doc_name, doc_text in documents.items():
+    processed_docs[doc_name] = preprocess(doc_text)
+
+print("=" * 60)
+print("STEP 1: PREPROCESSED DOCUMENTS")
+print("=" * 60)
+
+for doc_name, tokens in processed_docs.items():
+    print(f"\n{doc_name}:")
+    print(f"Tokens: {tokens}")
+    print(f"Total terms: {len(tokens)}")
+
+print("\n" + "=" * 60)
+print("STEP 2: TERM FREQUENCY (TF)")
+print("=" * 60)
+
+tf_scores = {}
+for doc_name, tokens in processed_docs.items():
+    total_terms = len(tokens)
+    term_count = {}
+    
+    for term in tokens:
+        term_count[term] = term_count.get(term, 0) + 1
+    
+    tf = {}
+    print(f"\n{doc_name} (Total: {total_terms} terms):")
+    for term, count in term_count.items():
+        tf[term] = count / total_terms
+        print(f"  '{term}': {count}/{total_terms} = {tf[term]:.4f}")
+    
+    tf_scores[doc_name] = tf
+
+print("\n" + "=" * 60)
+print("STEP 3: INVERSE DOCUMENT FREQUENCY (IDF)")
+print("=" * 60)
+
+total_docs = len(documents)
+all_terms = set()
+for tokens in processed_docs.values():
+    all_terms.update(tokens)
+
+idf_scores = {}
+print(f"\nTotal documents: {total_docs}")
+
+for term in sorted(all_terms):
+    doc_count = 0
+    docs_with_term = []
+    for doc_name, tokens in processed_docs.items():
+        if term in tokens:
+            doc_count += 1
+            docs_with_term.append(doc_name)
+    
+    idf = math.log(total_docs / doc_count)
+    idf_scores[term] = idf
+    print(f"  '{term}': in {doc_count} doc(s) {docs_with_term} → log({total_docs}/{doc_count}) = {idf:.4f}")
+
+print("\n" + "=" * 60)
+print("STEP 4: TF-IDF SCORES")
+print("=" * 60)
+
+tfidf_scores = {}
+for doc_name in documents.keys():
+    tfidf_scores[doc_name] = {}
+    for term in all_terms:
+        if term in tf_scores[doc_name]:
+            tfidf_scores[doc_name][term] = tf_scores[doc_name][term] * idf_scores[term]
+        else:
+            tfidf_scores[doc_name][term] = 0
+
+print(f"\n{'Term':<15} {'Animals':<12} {'Food':<12} {'Sports':<12}")
+print("-" * 55)
+
+key_terms = ['dogs', 'cats', 'birds', 'fish', 'lions', 'roar', 'bark', 'meow',
+             'pizza', 'cheese', 'burgers', 'pasta', 'spaghetti', 'ice', 'cream', 'apples',
+             'football', 'basketball', 'tennis', 'swimming', 'running', 'kick', 'shoot']
+
+for term in key_terms:
+    animals = tfidf_scores['Animals'].get(term, 0)
+    food = tfidf_scores['Food'].get(term, 0)
+    sports = tfidf_scores['Sports'].get(term, 0)
+    
+    if animals > 0 or food > 0 or sports > 0:
+        print(f"{term:<15} {animals:<12.4f} {food:<12.4f} {sports:<12.4f}")
+
+
